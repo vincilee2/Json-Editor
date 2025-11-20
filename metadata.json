@@ -1,0 +1,5 @@
+{
+  "name": "Nexus JSON Editor",
+  "description": "A professional-grade JSON editor with dual-view (Text/Tree), formatting tools, and AI-powered repair and generation capabilities using Gemini 2.5.",
+  "requestFramePermissions": []
+}
