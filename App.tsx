@@ -3,20 +3,19 @@ import {
   Code2, 
   Network, 
   Copy, 
-  Download, 
   Trash2, 
   Wand2, 
   AlignLeft, 
   CheckCircle2, 
   AlertCircle,
-  Bot
+  Bot,
+  WrapText
 } from 'lucide-react';
 import { CodeEditor } from './components/CodeEditor';
 import { JsonTree } from './components/JsonTree';
 import { IndentMode, JsonValue } from './types';
 import { fixJsonWithGemini, generateJsonWithGemini } from './services/geminiService';
-import _ from 'lodash'; // Assuming lodash is available or could be replaced, but using native deep clone for simplicity is better if no libraries.
-// Actually, user prompted to use popular libraries. Lodash is standard. But I will use structuredClone for deep copying to keep it dependency light as possible.
+import _ from 'lodash';
 
 const INITIAL_JSON = JSON.stringify({
   "project": "Nexus JSON Editor",
@@ -42,6 +41,7 @@ export default function App() {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [showAiModal, setShowAiModal] = useState(false);
+  const [wrapLines, setWrapLines] = useState(true);
 
   // Parse JSON whenever string changes
   useEffect(() => {
@@ -163,13 +163,22 @@ export default function App() {
             </button>
           </div>
 
-          <button 
-            onClick={minifyJson}
-            className="p-2 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition-colors" 
-            title="Minify"
-          >
-            <AlignLeft size={18} />
-          </button>
+          <div className="flex items-center gap-1 mr-2">
+             <button 
+               onClick={minifyJson}
+               className="p-2 hover:bg-slate-800 rounded-md text-slate-400 hover:text-white transition-colors" 
+               title="Minify"
+             >
+               <AlignLeft size={18} />
+             </button>
+             <button 
+               onClick={() => setWrapLines(!wrapLines)}
+               className={`p-2 hover:bg-slate-800 rounded-md transition-colors ${wrapLines ? 'text-indigo-400' : 'text-slate-400 hover:text-white'}`} 
+               title="Toggle Word Wrap"
+             >
+               <WrapText size={18} />
+             </button>
+          </div>
 
            {/* AI Actions */}
            <div className="h-6 w-px bg-slate-700 mx-2"></div>
@@ -240,7 +249,8 @@ export default function App() {
             <CodeEditor 
               value={jsonString} 
               onChange={setJsonString} 
-              error={error} 
+              error={error}
+              wrap={wrapLines}
             />
           </div>
         </div>

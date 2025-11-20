@@ -4,9 +4,10 @@ interface CodeEditorProps {
   value: string;
   onChange: (val: string) => void;
   error: string | null;
+  wrap: boolean;
 }
 
-export const CodeEditor: React.FC<CodeEditorProps> = ({ value, onChange, error }) => {
+export const CodeEditor: React.FC<CodeEditorProps> = ({ value, onChange, error, wrap }) => {
   return (
     <div className="relative w-full h-full bg-[#0f172a] text-slate-300 font-mono text-sm flex flex-col">
       {error && (
@@ -21,7 +22,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({ value, onChange, error }
         onChange={(e) => onChange(e.target.value)}
         spellCheck={false}
         placeholder="Paste your JSON here..."
-        style={{ whiteSpace: 'pre', overflowWrap: 'normal', overflowX: 'auto' }}
+        style={{ 
+          whiteSpace: wrap ? 'pre-wrap' : 'pre', 
+          overflowWrap: wrap ? 'break-word' : 'normal',
+          overflowX: wrap ? 'hidden' : 'auto' 
+        }}
       />
     </div>
   );
