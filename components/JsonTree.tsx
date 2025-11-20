@@ -1,11 +1,56 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Type, Hash, ToggleLeft, MoreHorizontal } from 'lucide-react';
+import { ChevronRight, ChevronDown, MoreHorizontal } from 'lucide-react';
 import { JsonValue, TreeNodeProps } from '../types';
 
 const getDataType = (value: JsonValue): string => {
   if (value === null) return 'null';
   if (Array.isArray(value)) return 'array';
   return typeof value;
+};
+
+// Auto-resizing editor that matches the content width/height exactly
+const AutoResizeEditor: React.FC<{
+  value: string;
+  onChange: (val: string) => void;
+  onFinish: () => void;
+  onCancel: () => void;
+}> = ({ value, onChange, onFinish, onCancel }) => {
+  
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Enter saves, Shift+Enter inserts newline
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      onFinish();
+    }
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      onCancel();
+    }
+  };
+
+  return (
+    <div className="inline-grid align-top min-w-[2rem] max-w-full relative">
+      {/* Shadow element to force dimensions. Matches textarea styling exactly. */}
+      <div 
+        aria-hidden="true"
+        className="col-start-1 row-start-1 invisible whitespace-pre-wrap break-all px-1.5 py-0.5 border border-transparent font-mono text-sm leading-6"
+      >
+        {value || ' '}
+      </div>
+      
+      {/* Actual Editor */}
+      <textarea
+        autoFocus
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onFinish}
+        onKeyDown={handleKeyDown}
+        onClick={(e) => e.stopPropagation()}
+        className="col-start-1 row-start-1 w-full h-full resize-none overflow-hidden bg-slate-700 text-white px-1.5 py-0.5 rounded outline-none border border-indigo-500 font-mono text-sm leading-6 break-all shadow-lg z-10"
+        spellCheck={false}
+      />
+    </div>
+  );
 };
 
 export const JsonTree: React.FC<TreeNodeProps> = ({ keyName, value, isLast, depth, onUpdate, path, expanded: initialExpanded = false }) => {
@@ -38,63 +83,72 @@ export const JsonTree: React.FC<TreeNodeProps> = ({ keyName, value, isLast, dept
     setIsEditing(false);
     let newValue: any = editValue;
     
-    if (type === 'number') newValue = Number(editValue);
-    if (type === 'boolean') newValue = editValue === 'true';
-    if (type === 'null') newValue = null;
-    
-    // Basic validation to prevent NaN for numbers
-    if (type === 'number' && isNaN(newValue)) {
-        // Revert or alert? Just revert for now
-        return;
+    // Basic type preservation logic
+    if (type === 'number') {
+        const n = Number(editValue);
+        if (!isNaN(n)) newValue = n;
+    } 
+    else if (type === 'boolean') {
+        if (editValue === 'true') newValue = true;
+        if (editValue === 'false') newValue = false;
     }
-
+    else if (type === 'null') {
+        if (editValue === 'null') newValue = null;
+    }
+    
     onUpdate(path, newValue);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSaveEdit();
-    if (e.key === 'Escape') setIsEditing(false);
-  };
-
-  const renderValue = () => {
-    if (isEditing) {
-      return (
-        <input
-          autoFocus
-          className="bg-slate-700 text-white px-1 rounded outline-none border border-blue-500 min-w-[50px]"
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={handleSaveEdit}
-          onKeyDown={handleKeyDown}
-          onClick={(e) => e.stopPropagation()}
-        />
-      );
-    }
-
-    switch (type) {
-      case 'string':
-        return <span className="text-emerald-400 break-all">"{value as string}"</span>;
-      case 'number':
-        return <span className="text-blue-400">{String(value)}</span>;
-      case 'boolean':
-        return <span className="text-purple-400 font-semibold">{String(value)}</span>;
-      case 'null':
-        return <span className="text-slate-500 italic">null</span>;
-      case 'object':
-        return <span className="text-slate-500 text-xs ml-2">{`{${Object.keys(value as object).length}}`}</span>;
-      case 'array':
-        return <span className="text-slate-500 text-xs ml-2">{`[${(value as any[]).length}]`}</span>;
-      default:
-        return <span className="text-slate-300">{String(value)}</span>;
-    }
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditValue('');
   };
 
   const Icon = isExpanded ? ChevronDown : ChevronRight;
 
+  const renderEditableValue = () => {
+    if (isEditing) {
+      // For strings, we render the editor inside quotes visually
+      // For primitives, just the editor
+      if (type === 'string') {
+         return (
+           <>
+             <span className="text-emerald-400">"</span>
+             <AutoResizeEditor 
+                value={editValue} 
+                onChange={setEditValue} 
+                onFinish={handleSaveEdit} 
+                onCancel={handleCancelEdit}
+             />
+             <span className="text-emerald-400">"</span>
+           </>
+         );
+      }
+      return (
+         <AutoResizeEditor 
+            value={editValue} 
+            onChange={setEditValue} 
+            onFinish={handleSaveEdit} 
+            onCancel={handleCancelEdit}
+         />
+      );
+    }
+
+    // Display Mode
+    return (
+      <span className="whitespace-pre-wrap break-all">
+         {type === 'string' && <span className="text-emerald-400">"{value as string}"</span>}
+         {type === 'number' && <span className="text-blue-400">{String(value)}</span>}
+         {type === 'boolean' && <span className="text-purple-400 font-semibold">{String(value)}</span>}
+         {type === 'null' && <span className="text-slate-500 italic">null</span>}
+      </span>
+    );
+  };
+
   return (
     <div className="font-mono text-sm leading-6 select-text">
       <div 
-        className={`flex items-start hover:bg-slate-800/50 rounded px-1 cursor-pointer transition-colors group ${isEditing ? 'bg-slate-800' : ''}`}
+        className={`flex items-start hover:bg-slate-800/50 rounded px-1 cursor-pointer transition-colors group ${isEditing ? 'bg-slate-800/30' : ''}`}
         style={{ paddingLeft: `${depth * 1.5}rem` }}
         onClick={isObject ? handleToggle : handleStartEdit}
       >
@@ -113,7 +167,7 @@ export const JsonTree: React.FC<TreeNodeProps> = ({ keyName, value, isLast, dept
         )}
 
         {/* Value (Primitive) or Bracket (Object) */}
-        <div className="flex-1 flex items-center">
+        <div className="flex-1 flex items-center min-w-0">
           {isObject ? (
             <>
               <span className="text-slate-400">
@@ -137,8 +191,8 @@ export const JsonTree: React.FC<TreeNodeProps> = ({ keyName, value, isLast, dept
             </>
           ) : (
             <>
-              {renderValue()}
-              {!isLast && <span className="text-slate-500">,</span>}
+              {renderEditableValue()}
+              {!isLast && <span className="text-slate-500 ml-0.5">,</span>}
             </>
           )}
         </div>
